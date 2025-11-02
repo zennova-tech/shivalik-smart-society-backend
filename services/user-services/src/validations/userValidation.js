@@ -1,7 +1,7 @@
 const { check, param } = require('express-validator');
 
 exports.testUserApi = [
-    check('name').not().isEmpty().withMessage('Name is requied'),
+    check('firstName').not().isEmpty().withMessage('First Name is requied'),
 ];
 
 exports.sendPhoneOtp = [
