@@ -4,10 +4,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "migrate:create": "migrate-mongo create",
-    "migrate:up": "migrate-mongo up",
-    "migrate:down": "migrate-mongo down",
-    "migrate:status": "migrate-mongo status",
+    "migrate": "node src/migrations/migrate.js",
     "test": "jest",
     "start:dev": "nodemon app.js --env=dev"
   },
