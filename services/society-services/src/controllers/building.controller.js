@@ -77,25 +77,80 @@ exports.update = async (req, res, next) => {
     const userId = req.user && req.user._id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const update = { ...req.body, updatedBy: userId };
+    // Build normalized payload similar to create()
+    const normalized = {};
 
-    // If society object provided, normalize to nested structure
     if (req.body.society) {
-      update.society = {
+      normalized.society = {
         name: req.body.society.name ?? undefined,
         logo: req.body.society.logo ?? undefined,
         ref: req.body.society.ref ?? undefined,
       };
     }
 
-    const updated = await buildingModel.findByIdAndUpdate(id, update, {
+    if (req.body.buildingName !== undefined) normalized.buildingName = req.body.buildingName;
+    if (req.body.address !== undefined) normalized.address = req.body.address;
+    if (req.body.territory !== undefined) normalized.territory = req.body.territory;
+    if (req.body.city !== undefined) normalized.city = req.body.city;
+    if (req.body.state !== undefined) normalized.state = req.body.state;
+    if (req.body.pinCode !== undefined) normalized.pinCode = req.body.pinCode;
+    if (req.body.buildingType !== undefined) normalized.buildingType = req.body.buildingType;
+    if (req.body.status !== undefined) normalized.status = req.body.status;
+
+    // numeric normalization (only set when provided)
+    if (req.body.totalBlocks !== undefined) {
+      const tb = Number(req.body.totalBlocks);
+      if (!Number.isNaN(tb)) normalized.totalBlocks = tb;
+      else normalized.totalBlocks = 0;
+    }
+    if (req.body.totalUnits !== undefined) {
+      const tu = Number(req.body.totalUnits);
+      if (!Number.isNaN(tu)) normalized.totalUnits = tu;
+      else normalized.totalUnits = 0;
+    }
+
+    // set updatedBy
+    normalized.updatedBy = userId;
+
+    // Attempt update first
+    const updated = await buildingModel.findByIdAndUpdate(id, normalized, {
       new: true,
       runValidators: true,
+      context: "query",
     });
-    if (!updated) return res.status(404).json({ message: "Building not found" });
-    return res.json(updated);
+
+    if (updated) {
+      // Successfully updated existing building
+      return res.status(200).json(updated);
+    }
+
+    // If not found => create a new building (use same normalized payload but set createdBy)
+    const payloadForCreate = {
+      // include society if present (already normalized)
+      society: normalized.society || undefined,
+
+      // top-level fields -- prefer values from normalized, but fall back to raw body if needed
+      buildingName: normalized.buildingName ?? req.body.buildingName,
+      address: normalized.address ?? req.body.address,
+      territory: normalized.territory ?? req.body.territory,
+      city: normalized.city ?? req.body.city,
+      state: normalized.state ?? req.body.state,
+      pinCode: normalized.pinCode ?? req.body.pinCode,
+      totalBlocks: normalized.totalBlocks ?? Number(req.body.totalBlocks ?? 0),
+      totalUnits: normalized.totalUnits ?? Number(req.body.totalUnits ?? 0),
+      buildingType: normalized.buildingType ?? req.body.buildingType,
+      status: normalized.status ?? req.body.status ?? "active",
+
+      createdBy: userId,
+    };
+
+    // Create new document
+    const created = await buildingModel.create(payloadForCreate);
+    return res.status(201).json(created);
   } catch (err) {
-    if (err.code === 11000) return res.status(409).json({ message: "Duplicate key error" });
+    if (err.code === 11000) {
+      return res.status(409).json({ message: "Duplicate key error" });
+    }
     next(err);
   }
 };
