@@ -1,13 +1,11 @@
-// routes/v1/index.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
+const healthController = require("../controllers/health.controller");
+const societyRoutes = require("./society.routes");
+const authRoutes = require("./auth.routes");
 
-// Import individual route modules
-const testUserRoutes = require('./testUserRoutes');
-const commonRoutes = require('./commonRoute');
-
-// Mount routes under their respective paths
-router.use('/test-users', testUserRoutes);
-router.use('/common', commonRoutes);
+router.get("/health", healthController.ping);
+router.use("/auth", authRoutes);
+router.use("/societies", societyRoutes);
 
 module.exports = router;
