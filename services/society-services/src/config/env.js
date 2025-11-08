@@ -5,8 +5,8 @@ const envFile =
   process.env.NODE_ENV === "production"
     ? ".env.prod"
     : process.env.NODE_ENV === "staging"
-    ? ".env.staging"
-    : ".env.dev";
+      ? ".env.staging"
+      : ".env.dev";
 
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 

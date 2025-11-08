@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const SocietySchema = new mongoose.Schema(
   {
@@ -6,7 +6,7 @@ const SocietySchema = new mongoose.Schema(
     // - store either a ref to an existing Project or the "projectName" entered when creating new.
     project: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Project',
+      ref: "Project",
       required: false,
     },
     projectName: {
@@ -45,7 +45,7 @@ const SocietySchema = new mongoose.Schema(
       email: { type: String, required: true, trim: true, lowercase: true },
       userRef: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
         required: false,
       }, // optional link to User document
     },
@@ -53,17 +53,17 @@ const SocietySchema = new mongoose.Schema(
     // Optional flags
     status: {
       type: String,
-      enum: ['active', 'inactive'],
-      default: 'active',
+      enum: ["active", "inactive"],
+      default: "active",
     },
 
     // Any extra metadata you want to track
     meta: {
-      createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       notes: { type: String },
     },
   },
-  { timestamps: true, collection: 'societies' }
+  { timestamps: true, collection: "societies" }
 );
 
 // Compound index to avoid duplicate society names within same territory (optional)
@@ -73,10 +73,10 @@ SocietySchema.index(
 );
 
 // Simple virtual for full admin name
-SocietySchema.virtual('admin.fullName').get(function () {
-  return `${this.admin.firstName || ''}${
-    this.admin.lastName ? ' ' + this.admin.lastName : ''
+SocietySchema.virtual("admin.fullName").get(function () {
+  return `${this.admin.firstName || ""}${
+    this.admin.lastName ? " " + this.admin.lastName : ""
   }`.trim();
 });
 
-module.exports = mongoose.model('Society', SocietySchema);
+module.exports = mongoose.model("Society", SocietySchema);

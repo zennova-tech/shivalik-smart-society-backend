@@ -1,24 +1,11 @@
+// src/controllers/society.controller.js
 const Society = require("../models/society.model");
-const { validationResult } = require("express-validator");
+const { success, fail } = require("../utils/response");
 
 exports.create = async (req, res, next) => {
   try {
-    const payload = req.body;
-    const society = new Society(payload);
-    await society.save();
-
-    // send welcome email to admin (demo purpose)
-    if (payload.adminEmail) {
-      await sendWelcomeEmail({
-        name: payload.adminName || "Admin",
-        email: payload.adminEmail,
-        societyName: payload.name,
-      });
-    }
-
-    res
-      .status(201)
-      .json({ message: "Society created and welcome email sent!", society });
+    const society = await Society.create(req.body);
+    return success(res, "Society created successfully", society, 201);
   } catch (err) {
     next(err);
   }
@@ -26,8 +13,8 @@ exports.create = async (req, res, next) => {
 
 exports.list = async (req, res, next) => {
   try {
-    const items = await Society.find().limit(100);
-    res.json(items);
+    const items = await Society.find();
+    return success(res, "Societies fetched successfully", items);
   } catch (err) {
     next(err);
   }
@@ -35,12 +22,9 @@ exports.list = async (req, res, next) => {
 
 exports.get = async (req, res, next) => {
   try {
-    const s = await Society.findById(req.params.id).populate(
-      "adminUser",
-      "name email"
-    );
-    if (!s) return res.status(404).json({ message: "Not found" });
-    res.json(s);
+    const society = await Society.findById(req.params.id);
+    if (!society) return fail(res, "Society not found", 404);
+    return success(res, "Society details fetched", society);
   } catch (err) {
     next(err);
   }

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -14,32 +14,32 @@ const UserSchema = new mongoose.Schema(
     // User Role in System
     role: {
       type: String,
-      enum: ['admin', 'manager', 'member', 'committeeMember', 'employee'],
-      default: 'member',
+      enum: ["admin", "manager", "member", "committeeMember", "employee"],
+      default: "member",
     },
 
     // Reference to which society the user belongs
-    society: { type: mongoose.Schema.Types.ObjectId, ref: 'Society' },
+    society: { type: mongoose.Schema.Types.ObjectId, ref: "Society" },
 
     // Optional linking with Committee or Employee document
     committeeMember: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'CommitteeMember',
+      ref: "CommitteeMember",
     },
     employee: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      ref: "Employee",
     },
 
     status: {
       type: String,
-      enum: ['active', 'inactive'],
-      default: 'active',
+      enum: ["active", "inactive"],
+      default: "active",
     },
 
     createdAt: { type: Date, default: Date.now },
   },
-  { collection: 'users' }
+  { collection: "users" }
 );
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model("User", UserSchema);
