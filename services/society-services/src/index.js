@@ -7,14 +7,18 @@ const routes = require("./routes");
 const errorHandler = require("./middleware/error.handler");
 const logger = require("./utils/logger");
 const { port } = require("./config/env");
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swagger");
+const path = require("path");
+
+// const swaggerUi = require("swagger-ui-express");
+// const swaggerSpec = require("./config/swagger");
 
 const app = express();
 
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
