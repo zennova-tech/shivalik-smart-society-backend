@@ -9,8 +9,8 @@ const logger = require("./utils/logger");
 const { port } = require("./config/env");
 const path = require("path");
 
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./config/swagger");
+// const swaggerUi = require("swagger-ui-express");
+// const swaggerSpec = require("./config/swagger");
 
 const app = express();
 
