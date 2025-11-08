@@ -2,10 +2,24 @@ const express = require("express");
 const router = express.Router();
 const healthController = require("../controllers/health.controller");
 const societyRoutes = require("./society.routes");
+const buildingRoutes = require("./building.routes");
 const authRoutes = require("./auth.routes");
+const blockRoutes = require("./block.routes");
+const floorRoutes = require("./floor.routes");
+const UnitRoutes = require("./unit.routes");
+const ParkingRoutes = require("./parking.routes");
+const NoticeRoutes = require("./notice.routes");
+const AmenityRoutes = require("./amenity.routes");
 
 router.get("/health", healthController.ping);
 router.use("/auth", authRoutes);
 router.use("/societies", societyRoutes);
+router.use("/building-details", buildingRoutes);
+router.use("/blocks", blockRoutes);
+router.use("/floors", floorRoutes);
+router.use("/units", UnitRoutes);
+router.use("/parkings", ParkingRoutes);
+router.use("/notices", NoticeRoutes);
+router.use("/amenities", AmenityRoutes);
 
 module.exports = router;
