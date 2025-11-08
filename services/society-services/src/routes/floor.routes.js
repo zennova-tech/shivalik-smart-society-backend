@@ -11,20 +11,11 @@ router.get("/", controller.list);
 
 router.get("/:id", controller.getById);
 
-router.put(
-  "/:id",
-  controller.update
-);
+router.put("/:id", controller.update);
 
-router.delete(
-  "/:id",
-  controller.remove
-);
+router.delete("/:id", controller.remove);
 
 // Batch create endpoint (create multiple floors in a block by range)
-router.post(
-  "/batch",
-  controller.batchCreate
-);
+router.post("/batch", controller.batchCreate);
 
 module.exports = router;

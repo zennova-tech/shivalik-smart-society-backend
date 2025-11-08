@@ -1,82 +1,37 @@
+// src/models/society.model.js
 const mongoose = require("mongoose");
 
 const SocietySchema = new mongoose.Schema(
   {
-    // If your app supports selecting an existing project or creating a new one:
-    // - store either a ref to an existing Project or the "projectName" entered when creating new.
-    project: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
-      required: false,
-    },
-    projectName: {
-      type: String, // used when user creates a new project inline
-      required: false,
-      trim: true,
-    },
+    code: { type: String, index: true, unique: true }, // you can auto-generate
+    project: { type: mongoose.Schema.Types.ObjectId, ref: "Project", default: null },
 
-    // Core society details
-    societyName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    name: { type: String, required: true },
+    territory: { type: String, default: "" },
+    address: { type: String, default: "" },
 
-    // Territory could be a string or ref to separate Territory collection if you have one
-    territory: {
-      type: String,
-      required: false,
-      trim: true,
-    },
+    // link to society manager (user._id)
+    adminManager: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
-    // Full postal address
-    address: {
-      type: String,
-      required: false,
-      trim: true,
-    },
+    // blocks embedded (lightweight)
+    blocks: [
+      {
+        name: String,
+        floors: Number,
+        unitsCount: Number,
+      },
+    ],
 
-    // Society admin / manager contact (stored as embedded object)
-    admin: {
-      firstName: { type: String, required: true, trim: true },
-      lastName: { type: String, trim: true },
-      countryCode: { type: String, trim: true }, // e.g. +91
-      mobileNumber: { type: String, trim: true },
-      email: { type: String, required: true, trim: true, lowercase: true },
-      userRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: false,
-      }, // optional link to User document
-    },
+    // audit
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
-    // Optional flags
-    status: {
-      type: String,
-      enum: ["active", "inactive"],
-      default: "active",
-    },
-
-    // Any extra metadata you want to track
-    meta: {
-      createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      notes: { type: String },
-    },
+    isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true, collection: "societies" }
+  {
+    collection: "societies",
+    timestamps: true,
+  }
 );
-
-// Compound index to avoid duplicate society names within same territory (optional)
-SocietySchema.index(
-  { societyName: 1, territory: 1 },
-  { unique: true, partialFilterExpression: { societyName: { $exists: true } } }
-);
-
-// Simple virtual for full admin name
-SocietySchema.virtual("admin.fullName").get(function () {
-  return `${this.admin.firstName || ""}${
-    this.admin.lastName ? " " + this.admin.lastName : ""
-  }`.trim();
-});
 
 module.exports = mongoose.model("Society", SocietySchema);

@@ -12,6 +12,7 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 
 module.exports = {
   port: process.env.PORT || 8080,
+  appUrl: process.env.APP_URL || "http://localhost:3000",
   nodeEnv: process.env.NODE_ENV || "development",
   mongoUri: process.env.MONGO_URI,
   dbName: process.env.DB_NAME,

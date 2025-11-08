@@ -2,8 +2,15 @@
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/auth.controller");
+const { required } = require("../middleware/auth");
 
-router.post("/request-otp", authController.requestOtp);
-router.post("/verify-otp", authController.verifyOtp);
+// POST /api/v1/auth/login
+router.post("/login", authController.loginWithPassword);
+
+// POST /api/v1/auth/accept-invite
+router.post("/accept-invite", authController.acceptInvite);
+
+// new: change password
+router.post("/change-password", required, authController.changePassword);
 
 module.exports = router;
