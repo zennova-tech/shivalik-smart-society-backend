@@ -12,20 +12,20 @@ const UserSchema = new mongoose.Schema(
     countryCode: { type: String, default: "+91" },
     mobileNumber: { type: String, index: true, default: null },
 
-    // passwordHash is required for email/password login users (superadmin/manager)
+    // passwordHash for email/password login users
     passwordHash: { type: String, default: null },
 
-    // multiple roles per user
-    roles: {
-      type: [{ type: String, enum: VALID_ROLES }],
-      default: ["member"],
+    // <-- Reverted: single role string (not array)
+    role: {
+      type: String,
+      enum: VALID_ROLES,
+      default: "member",
       index: true,
     },
 
-    // society association
     society: { type: mongoose.Schema.Types.ObjectId, ref: "Society", default: null },
 
-    // invitation flow (for invite + accept)
+    // Invitation flow
     invited: { type: Boolean, default: false },
     inviteToken: { type: String, default: null, index: true },
     inviteExpiresAt: { type: Date, default: null },
