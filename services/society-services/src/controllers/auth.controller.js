@@ -8,11 +8,11 @@ const { success, fail } = require("../utils/response");
 
 const TOKEN_TTL = "7d";
 
-// sign JWT with roles array
+// signToken helper (use role instead of roles)
 function signToken(user) {
   const payload = {
     sub: user._id.toString(),
-    roles: user.roles || ["member"],
+    role: user.role || "member",
     email: user.email || "",
   };
   return jwt.sign(payload, config.jwtSecret, { expiresIn: TOKEN_TTL });
@@ -41,7 +41,7 @@ exports.loginWithPassword = async (req, res, next) => {
       lastName: user.lastName,
       email: user.email,
       mobileNumber: user.mobileNumber,
-      roles: user.roles,
+      role: user.role,
       society: user.society,
       status: user.status,
       createdAt: user.createdAt,
@@ -81,7 +81,7 @@ exports.acceptInvite = async (req, res, next) => {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      roles: user.roles,
+      role: user.role,
       society: user.society,
     };
 

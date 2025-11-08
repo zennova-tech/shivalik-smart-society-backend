@@ -22,7 +22,7 @@ function generateSocietyCode(name = "") {
  *   projectId, name, territory, address,
  *   manager: { firstName, lastName, countryCode, mobileNumber, email }
  * }
- * Auth: required + authorize(['superadmin','admin'])
+ * Auth: required
  */
 exports.createSociety = async (req, res, next) => {
   try {
@@ -33,49 +33,52 @@ exports.createSociety = async (req, res, next) => {
 
     // create society
     const code = generateSocietyCode(name);
+    const creatorId = req.user ? req.user.sub || req.user.id : null;
     const society = await Society.create({
       project: projectId || null,
       name,
       territory: territory || "",
       address: address || "",
       code,
-      createdBy: req.user ? req.user.sub : null,
+      createdBy: creatorId,
     });
 
     // create or update manager user (invite)
     const token = generateInviteToken();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days expiry
 
-    // Try find existing user by email
-    let managerUser = await User.findOne({ email: manager.email.toLowerCase() });
+    // normalize email
+    const managerEmail = manager.email.toLowerCase();
+
+    let managerUser = await User.findOne({ email: managerEmail });
 
     if (managerUser) {
-      // attach society, add manager role if not present, set invite fields
-      const existingRoles = Array.isArray(managerUser.roles) ? managerUser.roles : ["member"];
-      if (!existingRoles.includes("manager")) existingRoles.push("manager");
-      managerUser.roles = existingRoles;
+      // attach society, set role to 'manager' if not already
+      if (!managerUser.role || managerUser.role !== "manager") {
+        managerUser.role = "manager";
+      }
       managerUser.society = society._id;
       managerUser.invited = true;
       managerUser.inviteToken = token;
       managerUser.inviteExpiresAt = expiresAt;
-      managerUser.invitedBy = req.user ? req.user.sub : null;
+      managerUser.invitedBy = creatorId;
       await managerUser.save();
     } else {
-      // create a new invited user record
+      // create a new invited user record with single role
       managerUser = await User.create({
         firstName: manager.firstName,
         lastName: manager.lastName || "",
-        email: manager.email.toLowerCase(),
+        email: managerEmail,
         countryCode: manager.countryCode || "+91",
         mobileNumber: manager.mobileNumber || null,
-        roles: ["manager"],
+        role: "manager",
         society: society._id,
         invited: true,
         inviteToken: token,
         inviteExpiresAt: expiresAt,
-        invitedBy: req.user ? req.user.sub : null,
+        invitedBy: creatorId,
         status: "active",
-        createdBy: req.user ? req.user.sub : null,
+        createdBy: creatorId,
       });
     }
 

@@ -21,7 +21,7 @@ async function seedAdmin() {
     countryCode: "+91",
     mobileNumber: "9999999999",
     passwordHash,
-    roles: ["superadmin", "admin"],
+    role: "superadmin", // single role
     status: "active",
     invited: false,
     isDeleted: false,
@@ -30,7 +30,6 @@ async function seedAdmin() {
   const admin = await User.create(adminDoc);
   console.log("✅ Admin user created:", admin.email);
   console.log("ℹ️  Default password for this superadmin is:", plain);
-  console.log("⚠️  Change the password immediately in production.");
 }
 
 module.exports = seedAdmin;
