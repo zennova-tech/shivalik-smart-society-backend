@@ -1,9 +1,14 @@
 node_modules
-.env
 package-lock.json
 .DS_Store
 Archive
 deploy.sh
+
+.env.dev
+.env.staging
+.env.prod
+
+*.log
 
 services/user-services/node_modules
 services/user-services/.env.dev
