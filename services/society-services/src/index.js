@@ -18,7 +18,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-app.use("/", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// app.use("/", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use("/api/v1", routes);
 
