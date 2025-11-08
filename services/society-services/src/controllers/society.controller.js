@@ -16,9 +16,7 @@ exports.create = async (req, res, next) => {
       });
     }
 
-    res
-      .status(201)
-      .json({ message: "Society created and welcome email sent!", society });
+    res.status(201).json({ message: "Society created and welcome email sent!", society });
   } catch (err) {
     next(err);
   }
@@ -35,10 +33,7 @@ exports.list = async (req, res, next) => {
 
 exports.get = async (req, res, next) => {
   try {
-    const s = await Society.findById(req.params.id).populate(
-      "adminUser",
-      "name email"
-    );
+    const s = await Society.findById(req.params.id).populate("adminUser", "name email");
     if (!s) return res.status(404).json({ message: "Not found" });
     res.json(s);
   } catch (err) {

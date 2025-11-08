@@ -7,7 +7,10 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js --watch src",
     "seed": "node src/console/seed.js",
-    "migrate": "migrate-mongo up"
+    "migrate": "migrate-mongo up",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -23,7 +26,11 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
     "migrate-mongo": "^8.0.0",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "prettier": "^3.6.2"
   }
 }

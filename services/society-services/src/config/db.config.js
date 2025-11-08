@@ -18,10 +18,7 @@ async function connect() {
     });
     logger.info("MongoDB connected");
   } catch (err) {
-    logger.error(
-      "MongoDB connection error",
-      err && err.message ? err.message : err
-    );
+    logger.error("MongoDB connection error", err);
     // exit so you can clearly see failure in logs and debug
     process.exit(1);
   }

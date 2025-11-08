@@ -13,13 +13,7 @@ const transporter = nodemailer.createTransport({
 });
 
 async function renderTemplate(templateName, data) {
-  const filePath = path.join(
-    __dirname,
-    "..",
-    "templates",
-    "emails",
-    `${templateName}.ejs`
-  );
+  const filePath = path.join(__dirname, "..", "templates", "emails", `${templateName}.ejs`);
   return new Promise((resolve, reject) => {
     ejs.renderFile(filePath, data, {}, (err, html) => {
       if (err) reject(err);
