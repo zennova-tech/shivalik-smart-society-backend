@@ -7,6 +7,8 @@ const routes = require("./routes");
 const errorHandler = require("./middleware/error.handler");
 const logger = require("./utils/logger");
 const { port } = require("./config/env");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
+
+app.use("/", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use("/api/v1", routes);
 
