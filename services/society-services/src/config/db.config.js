@@ -1,26 +1,26 @@
+// src/config/db.config.js
 const mongoose = require("mongoose");
+const env = require("./env");
 const logger = require("../utils/logger");
-const { mongoUri } = require("./env");
+
+let isConnected = false;
 
 async function connect() {
+  if (isConnected) return mongoose.connection;
+
   mongoose.set("strictQuery", false);
 
-  const uri = mongoUri || "mongodb://127.0.0.1:27017/smart-society";
-  // redact visible password for logs
-  const safeLogUri = uri.replace(/:\/\/.*@/, "://<user>:<redacted>@");
-
-  logger.info("Connecting to MongoDB:", safeLogUri);
   try {
-    await mongoose.connect(uri, {
+    await mongoose.connect(env.mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000, // fail fast if no server
     });
-    logger.info("MongoDB connected");
+    isConnected = true;
+    logger.info("MongoDB connected:", env.mongoUri);
+    return mongoose.connection;
   } catch (err) {
     logger.error("MongoDB connection error", err);
-    // exit so you can clearly see failure in logs and debug
-    process.exit(1);
+    throw err;
   }
 }
 

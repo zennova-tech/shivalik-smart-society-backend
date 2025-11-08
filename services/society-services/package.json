@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js --watch src",
-    "seed": "node src/console/seed.js",
+    "seed": "node src/console/index.js",
     "migrate": "migrate-mongo up",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
