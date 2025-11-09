@@ -131,30 +131,39 @@ exports.remove = async (req, res, next) => {
     return res.status(400).json({ status: false, message: "Invalid society id" });
   }
 
+  const societyObjId = mongoose.Types.ObjectId(societyId);
+
+  // Construct a safe match that works whether `society` is:
+  // - an embedded snapshot with { ref: ObjectId }
+  // - directly an ObjectId
+  // - or a plain string (fallback)
+  const societyMatch = {
+    $or: [{ "society.ref": societyObjId }, { society: societyObjId }, { society: societyId }],
+  };
+
   const session = await mongoose.startSession();
   let usedTransaction = true;
 
   try {
-    // Start transaction if supported
     session.startTransaction();
 
+    // Find buildings that belong to the society (safe query)
     const buildings = await buildingModel
-      .find({ society: societyId }, null, { session })
+      .find(societyMatch, null, { session })
       .select("_id")
       .lean();
     const buildingIds = buildings.map((b) => b._id);
-    // 1) Find blocks for this society
-    const blocks = await blockModel
-      .find({ society: societyId }, null, { session })
-      .select("_id")
-      .lean();
+
+    // blocks: same safe match (blockModel might store society as ObjectId or snapshot)
+    const blocks = await blockModel.find(societyMatch, null, { session }).select("_id").lean();
     const blockIds = blocks.map((b) => b._id);
+
     const blockQuery = {
-      $or: [{ society: mongoose.Types.ObjectId(societyId) }],
+      $or: [{ "society.ref": societyObjId }, { society: societyObjId }, { society: societyId }],
     };
     if (buildingIds.length) blockQuery.$or.push({ building: { $in: buildingIds } });
 
-    // 2) Find floors for these blocks
+    // floors for these blocks
     const floors = blockIds.length
       ? await floorModel
           .find({ block: { $in: blockIds } }, null, { session })
@@ -163,7 +172,7 @@ exports.remove = async (req, res, next) => {
       : [];
     const floorIds = floors.map((f) => f._id);
 
-    // 3) Find units for these floors
+    // units for these floors
     const units = floorIds.length
       ? await unitModel
           .find({ floor: { $in: floorIds } }, null, { session })
@@ -172,14 +181,9 @@ exports.remove = async (req, res, next) => {
       : [];
     const unitIds = units.map((u) => u._id);
 
-    // 4) Delete dependent collections in the safe order:
-    //    parking -> units -> floors -> blocks -> managers -> society
-
-    // delete parking linked to units or society
+    // parking: allow parking to reference society in different shapes
     const parkingFilter = {
-      $or: [
-        { society: new mongoose.Types.ObjectId(societyId) }, // if parking stores society ref
-      ],
+      $or: [{ "society.ref": societyObjId }, { society: societyObjId }, { society: societyId }],
     };
     if (unitIds.length) parkingFilter.$or.push({ unit: { $in: unitIds } });
 
@@ -200,18 +204,19 @@ exports.remove = async (req, res, next) => {
       await blockModel.deleteMany({ _id: { $in: blockIds } }, { session });
     }
 
+    // delete buildings
     if (buildingIds.length) {
       await buildingModel.deleteMany({ _id: { $in: buildingIds } }, { session });
     }
 
-    // delete managers for society
-    await userModel.deleteMany({ society: societyId }, { session });
+    // delete managers/users for society — use same flexible match
+    const userMatch = { $or: [{ society: societyObjId }, { society: societyId }] };
+    await userModel.deleteMany(userMatch, { session });
 
-    // finally delete society
-    const deleted = await Society.findOneAndDelete({ _id: societyId }, { session });
+    // finally delete society document itself (Society collection)
+    const deleted = await Society.findOneAndDelete({ _id: societyObjId }, { session });
 
     if (!deleted) {
-      // if society wasn't found, abort
       await session.abortTransaction();
       session.endSession();
       return res.status(404).json({ status: false, message: "Society not found" });
@@ -222,18 +227,16 @@ exports.remove = async (req, res, next) => {
 
     return res.json({ status: true, message: "Society and related data deleted successfully" });
   } catch (err) {
-    // If transactions not supported (e.g., standalone), try fallback to non-transactional deletes
     try {
       await session.abortTransaction();
     } catch (_) {}
     session.endSession();
 
-    // Fallback: try non-transactional deletes (best-effort)
+    // existing fallback logic — apply same flexible matching when running without session
     if ((err && /transactions are not supported/i.test(String(err))) || err.name === "MongoError") {
       usedTransaction = false;
       try {
-        // Best-effort cascade without session
-        const blocks = await blockModel.find({ society: societyId }).select("_id").lean();
+        const blocks = await blockModel.find(societyMatch).select("_id").lean();
         const blockIds = blocks.map((b) => b._id);
         const floors = blockIds.length
           ? await floorModel
@@ -250,15 +253,17 @@ exports.remove = async (req, res, next) => {
           : [];
         const unitIds = units.map((u) => u._id);
 
-        const parkingFilter = { $or: [{ society: societyId }] };
+        const parkingFilter = {
+          $or: [{ "society.ref": societyObjId }, { society: societyObjId }, { society: societyId }],
+        };
         if (unitIds.length) parkingFilter.$or.push({ unit: { $in: unitIds } });
 
         await parkingModel.deleteMany(parkingFilter);
         if (unitIds.length) await unitModel.deleteMany({ _id: { $in: unitIds } });
         if (floorIds.length) await floorModel.deleteMany({ _id: { $in: floorIds } });
         if (blockIds.length) await blockModel.deleteMany({ _id: { $in: blockIds } });
-        await userModel.deleteMany({ society: societyId });
-        const deleted = await Society.findOneAndDelete({ _id: societyId });
+        await userModel.deleteMany({ $or: [{ society: societyObjId }, { society: societyId }] });
+        const deleted = await Society.findOneAndDelete({ _id: societyObjId });
         if (!deleted) return res.status(404).json({ status: false, message: "Society not found" });
 
         return res.json({
@@ -274,7 +279,6 @@ exports.remove = async (req, res, next) => {
       }
     }
 
-    // default error
     console.error("Delete society error:", err);
     return res
       .status(500)
