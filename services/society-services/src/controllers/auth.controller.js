@@ -12,6 +12,8 @@ const TOKEN_TTL = "7d";
 function signToken(user) {
   const payload = {
     sub: user._id.toString(),
+    id: user._id.toString(),
+    _id: user._id.toString(),
     role: user.role || "member",
     email: user.email || "",
   };
