@@ -6,12 +6,12 @@ const { required } = require("../middleware/auth"); // verifies JWT
 const societyListCtrl = require("../controllers/society.list.controller");
 const { createSocietyValidator } = require("../validations/society.validators");
 
-// create society (only superadmin or platform-level admin)
-router.post("/", required, createSocietyValidator, societyController.createSociety);
-
-router.get("/list", required, societyListCtrl.getSocietiesList);
+router.get("/list", societyListCtrl.getSocietiesList);
+router.post("/", societyController.createSociety);
+router.get("/:id/details", societyController.getSocietyDetails);
 
 router.delete("/:id", societyController.remove);
 
 // other society routes...
+
 module.exports = router;
