@@ -59,22 +59,25 @@ exports.list = async (req, res, next) => {
     // Optional status filter
     if (req.query.status) filter.status = req.query.status;
 
-    // Fetch data
+    // Fetch data (sorted newest first)
     const [items, total] = await Promise.all([
       buildingModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       buildingModel.countDocuments(filter),
     ]);
 
-    // If no buildings found for this society
     if (!items || items.length === 0) {
-      // Option 1 (recommended): return empty array
-      return res.json({ items: [], total: 0, page, limit });
-
-      // Option 2 (strict): uncomment below to return 404
-      // return res.status(404).json({ message: "No buildings found for this society" });
+      return res.json({ item: null, total: 0, page, limit });
     }
 
-    return res.json({ items, total, page, limit });
+    // ✅ Return only the first element as default
+    const firstBuilding = items[0];
+
+    return res.json({
+      item: firstBuilding, // single object
+      total,
+      page,
+      limit,
+    });
   } catch (err) {
     next(err);
   }
