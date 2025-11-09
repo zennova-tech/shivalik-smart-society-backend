@@ -10,8 +10,11 @@ const {
 } = require("../validations/userRegistration.validators");
 const { validateRequest } = require("../middleware/validateRequest");
 const { upload } = require("../middleware/uploadRegistration");
+const { required } = require("../middleware/auth");
 
 // Public routes - no authentication required
+
+router.get("/guests", userRegistrationController.listGuests);
 
 // GET /api/v1/user/register/societies
 // Get list of societies for registration
@@ -47,7 +50,10 @@ router.post(
   "/",
   (req, res, next) => {
     // Only use multer if Content-Type is multipart/form-data
-    if (req.headers["content-type"] && req.headers["content-type"].includes("multipart/form-data")) {
+    if (
+      req.headers["content-type"] &&
+      req.headers["content-type"].includes("multipart/form-data")
+    ) {
       return upload.fields([
         { name: "profilePicture", maxCount: 1 },
         { name: "ownershipProof", maxCount: 1 },
@@ -61,4 +67,3 @@ router.post(
 );
 
 module.exports = router;
-

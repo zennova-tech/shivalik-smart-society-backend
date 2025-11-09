@@ -88,9 +88,7 @@ exports.getSocietyBlocks = async (req, res, next) => {
     }
 
     // Get buildings for this society
-    const buildings = await BuildingSetting.find({ "society.ref": societyId })
-      .select("_id")
-      .lean();
+    const buildings = await BuildingSetting.find({ "society.ref": societyId }).select("_id").lean();
     const buildingIds = buildings.map((b) => b._id);
 
     if (buildingIds.length === 0) {
@@ -297,7 +295,7 @@ exports.registerUser = async (req, res, next) => {
       society: societyId,
       status: "active",
       invited: false,
-      // Store additional data in a separate collection or extend User model
+      // Store additional   data in a separate collection or extend User model
       // For now, we'll store basic info
     };
 
@@ -315,28 +313,24 @@ exports.registerUser = async (req, res, next) => {
 
     logger.info(`User registered: ${user._id}, Type: ${type}, Unit: ${unitId}`);
 
-    return success(
-      res,
-      "Registration successful. Please login with your mobile number.",
-      {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          mobileNumber: user.mobileNumber,
-          role: user.role,
-          society: user.society,
-        },
-        unit: {
-          id: unit._id,
-          unitNumber: unit.unitNumber,
-        },
-        // In production, you might want to send the temp password via SMS/Email
-        // For now, returning it (remove in production)
-        temporaryPassword: tempPassword,
-      }
-    );
+    return success(res, "Registration successful. Please login with your mobile number.", {
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        mobileNumber: user.mobileNumber,
+        role: user.role,
+        society: user.society,
+      },
+      unit: {
+        id: unit._id,
+        unitNumber: unit.unitNumber,
+      },
+      // In production, you might want to send the temp password via SMS/Email
+      // For now, returning it (remove in production)
+      temporaryPassword: tempPassword,
+    });
   } catch (err) {
     logger.error("Error in registerUser", err);
     if (err.code === 11000) {
@@ -346,3 +340,194 @@ exports.registerUser = async (req, res, next) => {
   }
 };
 
+exports.listGuests = async (req, res, next) => {
+  try {
+    const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+    const rawLimit = req.query.limit ? Number(req.query.limit) : 20;
+    const limit = Math.min(Math.max(1, rawLimit || 20), 200);
+    const skip = (page - 1) * limit;
+
+    const { q, societyId, blockId, unitId } = req.query;
+
+    // Build Unit filter
+    const unitFilter = { owner: { $exists: true, $ne: null } };
+
+    // If unitId is provided, restrict to that unit
+    if (unitId) {
+      unitFilter._id = unitId;
+    }
+
+    // If blockId provided, restrict directly
+    if (blockId) {
+      unitFilter.block = blockId;
+    }
+
+    // If societyId provided, resolve building -> blocks -> units
+    if (societyId) {
+      // get building ids for society
+      const buildings = await BuildingSetting.find({ "society.ref": societyId })
+        .select("_id")
+        .lean();
+      const buildingIds = buildings.map((b) => b._id);
+      if (buildingIds.length === 0) {
+        // no buildings -> return empty
+        return success(res, "Guests fetched", { items: [], total: 0, page, limit });
+      }
+      const blocks = await Block.find({ building: { $in: buildingIds } })
+        .select("_id")
+        .lean();
+      const blockIds = blocks.map((b) => b._id);
+      if (blockIds.length === 0) {
+        return success(res, "Guests fetched", { items: [], total: 0, page, limit });
+      }
+      unitFilter.block = { $in: blockIds };
+    }
+
+    // Build user text filter (applied after populate) -> we'll filter by owner fields via aggregation if q present
+    // If no free-text query: simple path (find units then populate owner)
+    if (!q) {
+      const [units, total] = await Promise.all([
+        Unit.find(unitFilter)
+          .populate("owner", "firstName lastName email countryCode mobileNumber")
+          .populate("block", "name")
+          .populate("floor", "name number")
+          .select("_id unitNumber unitType block floor owner")
+          .sort({ unitNumber: 1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Unit.countDocuments(unitFilter),
+      ]);
+
+      // transform to expected shape
+      const items = units.map((u) => {
+        const owner = u.owner || {};
+        return {
+          unitId: u._id,
+          unitNumber: u.unitNumber,
+          unitType: u.unitType || null,
+          blockId: u.block ? u.block._id : null,
+          blockName: u.block ? u.block.name : null,
+          floor: u.floor ? { id: u.floor._id, name: u.floor.name, number: u.floor.number } : null,
+          firstName: owner.firstName || null,
+          lastName: owner.lastName || null,
+          mobileNumber: owner.mobileNumber || null,
+          countryCode: owner.countryCode || null,
+          email: owner.email || null,
+          userId: owner._id || null,
+        };
+      });
+
+      return success(res, "Guests fetched", {
+        items,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    }
+
+    // If free-text q is present, use aggregation to support search on owner fields and unit fields
+    const search = q.trim();
+    const textOrRegex = { $regex: search, $options: "i" };
+
+    // Aggregation pipeline:
+    // 1) match units (unitFilter)
+    // 2) lookup owner from users
+    // 3) unwind owner, match owner fields or unitNumber
+    // 4) lookup block, floor
+    const pipeline = [];
+
+    // Match initial unit filter
+    pipeline.push({ $match: unitFilter });
+
+    // Lookup owner
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+      },
+    });
+    pipeline.push({ $unwind: "$owner" });
+
+    // Lookup block and floor
+    pipeline.push({
+      $lookup: {
+        from: "blocks",
+        localField: "block",
+        foreignField: "_id",
+        as: "block",
+      },
+    });
+    pipeline.push({ $unwind: { path: "$block", preserveNullAndEmptyArrays: true } });
+
+    pipeline.push({
+      $lookup: {
+        from: "floors",
+        localField: "floor",
+        foreignField: "_id",
+        as: "floor",
+      },
+    });
+    pipeline.push({ $unwind: { path: "$floor", preserveNullAndEmptyArrays: true } });
+
+    // Search match
+    pipeline.push({
+      $match: {
+        $or: [
+          { "owner.firstName": textOrRegex },
+          { "owner.lastName": textOrRegex },
+          { "owner.email": textOrRegex },
+          { "owner.mobileNumber": textOrRegex },
+          { unitNumber: textOrRegex },
+          { "block.name": textOrRegex },
+        ],
+      },
+    });
+
+    // Count facet
+    pipeline.push({
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $sort: { unitNumber: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              unitId: "$_id",
+              unitNumber: 1,
+              unitType: 1,
+              blockId: "$block._id",
+              blockName: "$block.name",
+              floor: { id: "$floor._id", name: "$floor.name", number: "$floor.number" },
+              firstName: "$owner.firstName",
+              lastName: "$owner.lastName",
+              mobileNumber: "$owner.mobileNumber",
+              countryCode: "$owner.countryCode",
+              email: "$owner.email",
+              userId: "$owner._id",
+            },
+          },
+        ],
+      },
+    });
+
+    const aggRes = await Unit.aggregate(pipeline);
+    const metadata = (aggRes[0].metadata && aggRes[0].metadata[0]) || { total: 0 };
+    const data = aggRes[0].data || [];
+
+    return success(res, "Guests fetched", {
+      items: data,
+      total: metadata.total,
+      page,
+      limit,
+      totalPages: Math.ceil(metadata.total / limit),
+    });
+  } catch (err) {
+    logger.error("Error in listGuests", err);
+    return next(err);
+  }
+};
