@@ -7,7 +7,7 @@ const societyListCtrl = require("../controllers/society.list.controller");
 const { createSocietyValidator } = require("../validations/society.validators");
 
 router.get("/list", societyListCtrl.getSocietiesList);
-router.post("/", createSocietyValidator, societyController.createSociety);
+router.post("/", societyController.createSociety);
 router.get("/:id/details", societyController.getSocietyDetails);
 
 router.delete("/:id", societyController.remove);
