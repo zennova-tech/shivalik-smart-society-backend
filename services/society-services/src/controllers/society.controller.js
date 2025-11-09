@@ -116,3 +116,24 @@ exports.createSociety = async (req, res, next) => {
     return next(err);
   }
 };
+
+exports.remove = async (req, res, next) => {
+  try {
+    const hard = req.query.hard === "true";
+    if (hard) {
+      const removed = await Society.findByIdAndDelete(req.params.id);
+      if (!removed) return res.status(404).json({ message: "Complaint not found" });
+      return res.json({ message: "Complaint permanently deleted" });
+    } else {
+      const updated = await Society.findByIdAndUpdate(
+        req.params.id,
+        { status: "archived" },
+        { new: true }
+      );
+      if (!updated) return res.status(404).json({ message: "Society not found" });
+      return res.json({ message: "Society archived", complaint: updated });
+    }
+  } catch (err) {
+    next(err);
+  }
+};

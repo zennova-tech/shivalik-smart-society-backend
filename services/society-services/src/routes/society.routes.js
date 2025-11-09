@@ -4,11 +4,14 @@ const router = express.Router();
 const societyController = require("../controllers/society.controller");
 const { required } = require("../middleware/auth"); // verifies JWT
 const societyListCtrl = require("../controllers/society.list.controller");
+const { createSocietyValidator } = require("../validations/society.validators");
 
 // create society (only superadmin or platform-level admin)
-router.post("/", required, societyController.createSociety);
+router.post("/", required, createSocietyValidator, societyController.createSociety);
 
 router.get("/list", required, societyListCtrl.getSocietiesList);
+
+router.delete("/:id", societyController.remove);
 
 // other society routes...
 module.exports = router;
