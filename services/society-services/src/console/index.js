@@ -9,9 +9,10 @@ async function runSeeds() {
     console.log("🚀 Running seeders...\n");
 
     const seedAdmin = require("./seeds/admin.seed");
+    const seedExample = require("./seeds/example.seed");
 
     if (typeof seedAdmin === "function") await seedAdmin();
-    if (typeof seedSociety === "function") await seedSociety();
+    if (typeof seedExample === "function") await seedExample();
 
     console.log("\n🎉 Seeds completed");
     await mongoose.disconnect();

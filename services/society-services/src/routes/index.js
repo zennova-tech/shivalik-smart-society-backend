@@ -13,6 +13,7 @@ const AmenityRoutes = require("./amenity.routes");
 const EmployeeRoutes = require("./employee.routes");
 const CommiteeRoutes = require("./committeeMember.routes");
 const ComplaintRoutes = require("./complaint.routes");
+const ManagerRoutes = require("./manager.routes");
 
 router.get("/health", healthController.ping);
 router.use("/auth", authRoutes);
@@ -27,5 +28,6 @@ router.use("/amenities", AmenityRoutes);
 router.use("/employees", EmployeeRoutes);
 router.use("/committee", CommiteeRoutes);
 router.use("/complaints", ComplaintRoutes);
+router.use("/manager", ManagerRoutes);
 
 module.exports = router;
