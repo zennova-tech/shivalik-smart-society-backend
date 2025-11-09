@@ -33,25 +33,47 @@ exports.create = async (req, res, next) => {
 
 exports.list = async (req, res, next) => {
   try {
-    const page = req.query.page || 1;
-    const limit = req.query.limit || 20;
+    // Safe pagination parsing
+    const page = req.query.page ? Math.max(1, Number(req.query.page)) : 1;
+    const rawLimit = req.query.limit ? Number(req.query.limit) : 20;
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 500);
     const skip = (page - 1) * limit;
-    const q = req.query.q;
 
+    const q = req.query.q;
     const filter = {};
-    if (q) {
-      // simple text search on building and society name
-      filter.$text = { $search: q };
+
+    // Society ID from route params
+    const societyId = req.params.id;
+
+    if (!societyId) {
+      return res.status(400).json({ message: "Society ID is required in params" });
     }
-    // optional: only active
+
+    // Match buildings whose society.ref equals the passed society ID
+    filter["society.ref"] = societyId;
+
+    // Optional text search (building/society name)
+    if (q) filter.$text = { $search: q };
+
+    // Optional status filter
     if (req.query.status) filter.status = req.query.status;
 
+    // Fetch data
     const [items, total] = await Promise.all([
       buildingModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       buildingModel.countDocuments(filter),
     ]);
 
-    return res.json({ items, total, page: Number(page), limit: Number(limit) });
+    // If no buildings found for this society
+    if (!items || items.length === 0) {
+      // Option 1 (recommended): return empty array
+      return res.json({ items: [], total: 0, page, limit });
+
+      // Option 2 (strict): uncomment below to return 404
+      // return res.status(404).json({ message: "No buildings found for this society" });
+    }
+
+    return res.json({ items, total, page, limit });
   } catch (err) {
     next(err);
   }
