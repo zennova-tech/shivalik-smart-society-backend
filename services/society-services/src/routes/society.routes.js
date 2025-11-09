@@ -11,5 +11,7 @@ router.post("/", required, createSocietyValidator, societyController.createSocie
 
 router.get("/list", required, societyListCtrl.getSocietiesList);
 
+router.delete("/:id", societyController.remove);
+
 // other society routes...
 module.exports = router;
