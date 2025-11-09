@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const SocietySchema = new mongoose.Schema(
   {
     code: { type: String, index: true, unique: true }, // you can auto-generate
-    project: { type: mongoose.Schema.Types.ObjectId, ref: "Project", default: null },
+    project: { type: String, default: "" },
 
     name: { type: String, required: true },
     territory: { type: String, default: "" },
