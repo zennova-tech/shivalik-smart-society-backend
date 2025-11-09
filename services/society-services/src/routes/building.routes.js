@@ -4,7 +4,7 @@ const controller = require("../controllers/building.controller");
 const auth = require("../middleware/auth");
 
 router.get("/", controller.list);
-router.post("/", auth.optional, controller.create);
+// router.post("/", auth.optional, controller.create);
 router.get("/:id", controller.getById);
 router.put("/:id", controller.update);
 
