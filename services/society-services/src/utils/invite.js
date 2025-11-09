@@ -1,23 +1,27 @@
 // src/utils/invite.js
-const crypto = require("crypto");
-const config = require("../config/env");
-const { sendMail } = require("../libs/mail"); // your EJS-enabled mail lib
-const logger = require("./logger");
+const { sendMail } = require("../libs/mail");
+const logger = require("../utils/logger");
 
 function generateInviteToken() {
   return crypto.randomBytes(24).toString("hex");
 }
 
-async function sendManagerInvite({ toEmail, firstName, societyName, token }) {
-  const acceptUrl = `${config.appUrl || "http://localhost:4001"}/accept-invite?token=${token}`;
+async function sendManagerInvite({
+  toEmail,
+  firstName,
+  societyName,
+  tempPassword,
+  changePasswordUrl,
+}) {
+  // Use the EJS template "invite-manager-password.ejs" (see below)
   try {
     await sendMail({
       to: toEmail,
-      subject: `Invite to manage ${societyName}`,
-      template: "invite-manager",
-      data: { firstName, societyName, acceptUrl },
+      subject: `Account created for ${societyName}`,
+      template: "invite-manager-password", // new template name
+      data: { firstName, societyName, tempPassword, changePasswordUrl, toEmail },
     });
-    logger.info(`Invite email queued/sent to ${toEmail}`);
+    logger.info(`Invite (with password) email sent to ${toEmail}`);
     return true;
   } catch (err) {
     logger.error("Failed to send invite email", err);

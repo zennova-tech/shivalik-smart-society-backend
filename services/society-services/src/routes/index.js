@@ -10,6 +10,9 @@ const UnitRoutes = require("./unit.routes");
 const ParkingRoutes = require("./parking.routes");
 const NoticeRoutes = require("./notice.routes");
 const AmenityRoutes = require("./amenity.routes");
+const EmployeeRoutes = require("./employee.routes");
+const CommiteeRoutes = require("./committeeMember.routes");
+const ComplaintRoutes = require("./complaint.routes");
 
 router.get("/health", healthController.ping);
 router.use("/auth", authRoutes);
@@ -21,5 +24,8 @@ router.use("/units", UnitRoutes);
 router.use("/parkings", ParkingRoutes);
 router.use("/notices", NoticeRoutes);
 router.use("/amenities", AmenityRoutes);
+router.use("/employees", EmployeeRoutes);
+router.use("/committee", CommiteeRoutes);
+router.use("/complaints", ComplaintRoutes);
 
 module.exports = router;

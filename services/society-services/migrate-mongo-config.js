@@ -1,4 +1,4 @@
-const { mongoUri, dbName } = require("./env");
+const { mongoUri, dbName } = require("./src/config/env");
 
 module.exports = {
   mongodb: {
@@ -8,4 +8,5 @@ module.exports = {
   },
   migrationsDir: "src/migrations",
   changelogCollectionName: "migrations_changelog",
+  migrationFileExtension: ".js",
 };
