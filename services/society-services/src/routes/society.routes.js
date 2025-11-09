@@ -6,11 +6,12 @@ const { required } = require("../middleware/auth"); // verifies JWT
 const societyListCtrl = require("../controllers/society.list.controller");
 const { createSocietyValidator } = require("../validations/society.validators");
 
-router.get("/list", societyListCtrl.getSocietiesList);
-router.post("/", societyController.createSociety);
-router.get("/:id/details", societyController.getSocietyDetails);
+const { required } = require("../middleware/auth"); // verifies JWT
+router.get("/list", required, societyListCtrl.getSocietiesList);
+router.post("/", required, societyController.createSociety);
+router.get("/:id/details", required, societyController.getSocietyDetails);
 
-router.delete("/:id", societyController.remove);
+router.delete("/:id", required, societyController.remove);
 
 // other society routes...
 
