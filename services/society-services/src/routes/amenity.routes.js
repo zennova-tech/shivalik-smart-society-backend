@@ -13,7 +13,7 @@ const {
 
 // CRUD
 router.post("/", required, createAmenityValidator, controller.create);
-router.get("/", required, controller.list);
+router.get("/", controller.list);
 router.get("/:id", required, controller.getById);
 router.put("/:id", required, controller.update);
 router.delete("/:id", required, controller.remove);
