@@ -4,12 +4,22 @@ const path = require("path");
 const logger = require("../utils/logger");
 const { mailUser, mailPass } = require("../config/env");
 
+console.log({ mailUser, mailPass });
 const transporter = nodemailer.createTransport({
   service: "gmail", // or use SMTP host (e.g., SES, SendGrid)
+  port: 465,
   auth: {
     user: mailUser,
     pass: mailPass,
   },
+});
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("SMTP connection failed:", error);
+  } else {
+    console.log("SMTP connection successful:", success);
+  }
 });
 
 async function renderTemplate(templateName, data) {

@@ -1,9 +1,11 @@
 // src/controllers/society.controller.js
 const Society = require("../models/society.model");
 const User = require("../models/user.model");
-const { generateInviteToken, sendManagerInvite } = require("../utils/invite");
+const { sendManagerInvite } = require("../utils/invite");
 const { success, fail } = require("../utils/response");
 const logger = require("../utils/logger");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 /**
  * Auto-generate a short society code (e.g. SHV-2025-XXXX)
@@ -15,15 +17,15 @@ function generateSocietyCode(name = "") {
   return `${prefix}-${year}-${suffix}`;
 }
 
-/**
- * POST /api/v1/societies
- * Body:
- * {
- *   projectId, name, territory, address,
- *   manager: { firstName, lastName, countryCode, mobileNumber, email }
- * }
- * Auth: required
- */
+function generateTempPassword(length = 10) {
+  // generate a URL-safe base64-like password and keep to requested length
+  return crypto
+    .randomBytes(Math.ceil((length * 3) / 4))
+    .toString("base64")
+    .replace(/[+/=]/g, "")
+    .slice(0, length);
+}
+
 exports.createSociety = async (req, res, next) => {
   try {
     const { projectId, name, territory, address, manager } = req.body;
@@ -43,28 +45,31 @@ exports.createSociety = async (req, res, next) => {
       createdBy: creatorId,
     });
 
-    // create or update manager user (invite)
-    const token = generateInviteToken();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days expiry
-
-    // normalize email
+    // create manager account with password now
     const managerEmail = manager.email.toLowerCase();
-
     let managerUser = await User.findOne({ email: managerEmail });
 
+    // generate a temporary password (10 chars) and hash it
+    const tempPassword = generateTempPassword(12); // adjust length if required
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(tempPassword, salt);
+
+    const now = new Date();
     if (managerUser) {
-      // attach society, set role to 'manager' if not already
-      if (!managerUser.role || managerUser.role !== "manager") {
-        managerUser.role = "manager";
-      }
+      // update existing user: set role to manager, set password hash, link society
+      managerUser.role = "manager";
       managerUser.society = society._id;
-      managerUser.invited = true;
-      managerUser.inviteToken = token;
-      managerUser.inviteExpiresAt = expiresAt;
+      managerUser.passwordHash = passwordHash;
+      managerUser.invited = false; // account already has password
+      managerUser.inviteToken = null;
+      managerUser.inviteExpiresAt = null;
       managerUser.invitedBy = creatorId;
+      managerUser.forcePasswordReset = false; // require change on first login
+      managerUser.updatedBy = creatorId;
+      managerUser.updatedAt = now;
       await managerUser.save();
     } else {
-      // create a new invited user record with single role
+      // create a new user with password
       managerUser = await User.create({
         firstName: manager.firstName,
         lastName: manager.lastName || "",
@@ -73,12 +78,16 @@ exports.createSociety = async (req, res, next) => {
         mobileNumber: manager.mobileNumber || null,
         role: "manager",
         society: society._id,
-        invited: true,
-        inviteToken: token,
-        inviteExpiresAt: expiresAt,
+        passwordHash,
+        invited: false,
+        inviteToken: null,
+        inviteExpiresAt: null,
         invitedBy: creatorId,
+        forcePasswordReset: false,
         status: "active",
         createdBy: creatorId,
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
@@ -86,12 +95,13 @@ exports.createSociety = async (req, res, next) => {
     society.adminManager = managerUser._id;
     await society.save();
 
-    // send invite email (best-effort)
+    // send email containing the temp password (best-effort)
     const emailSent = await sendManagerInvite({
       toEmail: managerUser.email,
       firstName: managerUser.firstName,
       societyName: society.name,
-      token,
+      tempPassword, // pass temp password to email helper
+      changePasswordUrl: `${process.env.APP_URL || "http://localhost:3000"}/change-password`, // frontend link
     });
 
     const data = {
@@ -100,7 +110,7 @@ exports.createSociety = async (req, res, next) => {
       inviteSent: emailSent,
     };
 
-    return success(res, "Society created and manager invited", data, 201);
+    return success(res, "Society created and manager invited (password created)", data, 201);
   } catch (err) {
     logger.error("Error creating society", err);
     return next(err);
