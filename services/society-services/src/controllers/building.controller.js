@@ -134,6 +134,11 @@ exports.update = async (req, res, next) => {
     // set updatedBy
     normalized.updatedBy = userId;
 
+    if (id) {
+      normalized.society = normalized.society || {};
+      normalized.society.ref = id;
+    }
+
     // Attempt update first
     const updated = await buildingModel.findByIdAndUpdate(id, normalized, {
       new: true,
@@ -165,6 +170,10 @@ exports.update = async (req, res, next) => {
 
       createdBy: userId,
     };
+
+    if (id) {
+      payloadForCreate.society.ref = id;
+    }
 
     // Create new document
     const created = await buildingModel.create(payloadForCreate);
