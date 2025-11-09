@@ -16,7 +16,7 @@ exports.create = async (req, res, next) => {
       pinCode: req.body.pinCode,
       totalBlocks: req.body.totalBlocks ?? 0,
       totalUnits: req.body.totalUnits ?? 0,
-      buildingType: req.body.buildingType.toLowerCase(),
+      buildingType: req.body.buildingType ? req.body.buildingType.toLowerCase() : undefined,
       createdBy: "690f738ef35f6b855a7b7746",
     };
 
@@ -115,7 +115,8 @@ exports.update = async (req, res, next) => {
     if (req.body.city !== undefined) normalized.city = req.body.city;
     if (req.body.state !== undefined) normalized.state = req.body.state;
     if (req.body.pinCode !== undefined) normalized.pinCode = req.body.pinCode;
-    if (req.body.buildingType !== undefined) normalized.buildingType = req.body.buildingType;
+    if (req.body.buildingType !== undefined)
+      normalized.buildingType = req.body.buildingType.toLowerCase();
     if (req.body.status !== undefined) normalized.status = req.body.status;
 
     // numeric normalization (only set when provided)
@@ -159,7 +160,7 @@ exports.update = async (req, res, next) => {
       pinCode: normalized.pinCode ?? req.body.pinCode,
       totalBlocks: normalized.totalBlocks ?? Number(req.body.totalBlocks ?? 0),
       totalUnits: normalized.totalUnits ?? Number(req.body.totalUnits ?? 0),
-      buildingType: normalized.buildingType ?? req.body.buildingType,
+      buildingType: normalized.buildingType.toLowerCase() ?? req.body.buildingType.toLowerCase(),
       status: normalized.status ?? req.body.status ?? "active",
 
       createdBy: userId,
