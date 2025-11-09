@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const buildingModel = require("../models/building.model");
 
 exports.create = async (req, res, next) => {
@@ -95,93 +96,119 @@ exports.getById = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const paramId = req.params.id;
+    const bodySocietyId = req.body.societyId;
     const userId = (req.user && req.user._id) || "000000000000000000000000";
 
-    // Build normalized payload similar to create()
+    // determine societyRef for creation: prefer explicit body.societyId, otherwise use param id
+    const societyRefForCreate = bodySocietyId || paramId || undefined;
+
+    // Build normalized payload (only include fields that are passed)
     const normalized = {};
 
-    if (req.body.society) {
-      normalized.society = {
-        name: req.body.society.name ?? undefined,
-        logo: req.body.society.logo ?? undefined,
-        ref: req.body.society.ref ?? undefined,
-      };
+    // accept society object if provided in body (e.g. { society: { name, logo } })
+    if (req.body.society && typeof req.body.society === "object") {
+      normalized.society = {};
+      if (req.body.society.name !== undefined) normalized.society.name = req.body.society.name;
+      if (req.body.society.logo !== undefined) normalized.society.logo = req.body.society.logo;
+      if (req.body.society.ref !== undefined) normalized.society.ref = req.body.society.ref;
     }
 
+    // top-level fields
     if (req.body.buildingName !== undefined) normalized.buildingName = req.body.buildingName;
     if (req.body.address !== undefined) normalized.address = req.body.address;
     if (req.body.territory !== undefined) normalized.territory = req.body.territory;
     if (req.body.city !== undefined) normalized.city = req.body.city;
     if (req.body.state !== undefined) normalized.state = req.body.state;
     if (req.body.pinCode !== undefined) normalized.pinCode = req.body.pinCode;
-    if (req.body.buildingType !== undefined)
-      normalized.buildingType = req.body.buildingType.toLowerCase();
+    if (req.body.buildingType !== undefined && req.body.buildingType !== null) {
+      // safe lowercasing only when value exists
+      normalized.buildingType = String(req.body.buildingType).toLowerCase();
+    }
     if (req.body.status !== undefined) normalized.status = req.body.status;
 
     // numeric normalization (only set when provided)
     if (req.body.totalBlocks !== undefined) {
       const tb = Number(req.body.totalBlocks);
-      if (!Number.isNaN(tb)) normalized.totalBlocks = tb;
-      else normalized.totalBlocks = 0;
+      normalized.totalBlocks = Number.isNaN(tb) ? 0 : tb;
     }
     if (req.body.totalUnits !== undefined) {
       const tu = Number(req.body.totalUnits);
-      if (!Number.isNaN(tu)) normalized.totalUnits = tu;
-      else normalized.totalUnits = 0;
+      normalized.totalUnits = Number.isNaN(tu) ? 0 : tu;
     }
 
     // set updatedBy
     normalized.updatedBy = userId;
 
-    if (id) {
-      normalized.society = normalized.society || {};
-      normalized.society.ref = id;
+    // If normalized.society exists but no ref, prefer explicit societyId or param id
+    if (normalized.society && !normalized.society.ref && societyRefForCreate) {
+      normalized.society.ref = societyRefForCreate;
     }
 
-    // Attempt update first
-    const updated = await buildingModel.findByIdAndUpdate(id, normalized, {
-      new: true,
-      runValidators: true,
-      context: "query",
-    });
+    // TRY to update assuming :id is a building id
+    let updated = null;
+    if (paramId && mongoose.Types.ObjectId.isValid(paramId)) {
+      updated = await buildingModel.findByIdAndUpdate(paramId, normalized, {
+        new: true,
+        runValidators: true,
+        context: "query",
+      });
+    }
 
     if (updated) {
-      // Successfully updated existing building
+      // updated existing building
       return res.status(200).json(updated);
     }
 
-    // If not found => create a new building (use same normalized payload but set createdBy)
+    // NOT FOUND: create a new building using payload + fallbacks from raw body
+    // Prepare the create payload carefully (avoid calling .toLowerCase() on undefined)
     const payloadForCreate = {
-      // include society if present (already normalized)
       society: normalized.society || undefined,
-
-      // top-level fields -- prefer values from normalized, but fall back to raw body if needed
       buildingName: normalized.buildingName ?? req.body.buildingName,
       address: normalized.address ?? req.body.address,
       territory: normalized.territory ?? req.body.territory,
       city: normalized.city ?? req.body.city,
       state: normalized.state ?? req.body.state,
       pinCode: normalized.pinCode ?? req.body.pinCode,
-      totalBlocks: normalized.totalBlocks ?? Number(req.body.totalBlocks ?? 0),
-      totalUnits: normalized.totalUnits ?? Number(req.body.totalUnits ?? 0),
-      buildingType: normalized.buildingType.toLowerCase() ?? req.body.buildingType.toLowerCase(),
+      totalBlocks:
+        normalized.totalBlocks ??
+        (req.body.totalBlocks !== undefined ? Number(req.body.totalBlocks) : 0),
+      totalUnits:
+        normalized.totalUnits ??
+        (req.body.totalUnits !== undefined ? Number(req.body.totalUnits) : 0),
+      buildingType:
+        normalized.buildingType ??
+        (req.body.buildingType !== undefined && req.body.buildingType !== null
+          ? String(req.body.buildingType).toLowerCase()
+          : undefined),
       status: normalized.status ?? req.body.status ?? "active",
-
       createdBy: userId,
+      updatedBy: userId,
     };
 
-    if (id) {
-      payloadForCreate.society.ref = id;
+    // ensure society.ref is set (prefer explicit body.societyId, then param id)
+    if (!payloadForCreate.society) payloadForCreate.society = {};
+    if (!payloadForCreate.society.ref && societyRefForCreate) {
+      if (!mongoose.Types.ObjectId.isValid(String(societyRefForCreate))) {
+        // optional: you can either throw or ignore; we'll include it but not validate here
+        // throwing would prevent accidental bad refs
+      }
+      payloadForCreate.society.ref = societyRefForCreate;
     }
 
-    // Create new document
+    // If society.ref still missing, you might want to reject creation
+    if (!payloadForCreate.society.ref) {
+      return res.status(400).json({ message: "Missing society id (provide societyId or use :id)" });
+    }
+
     const created = await buildingModel.create(payloadForCreate);
     return res.status(201).json(created);
   } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({ message: "Duplicate key error" });
+    // duplicate key
+    if (err && err.code === 11000) {
+      return res.status(409).json({ message: "Duplicate key error", error: err.keyValue || err });
     }
+    // validation / other errors
     next(err);
   }
 };
