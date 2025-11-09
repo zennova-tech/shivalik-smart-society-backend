@@ -2,19 +2,26 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/block.controller");
+const {
+  createBlockValidator,
+  listBlockValidator,
+  updateBlockValidator,
+  deleteBlockValidator,
+} = require("../validations/block.validators");
+const { validateRequest } = require("../middleware/validateRequest");
 // Create a block
-router.post("/", controller.create);
+router.post("/", createBlockValidator, validateRequest, controller.create);
 
 // List blocks (pagination + filter)
-router.get("/", controller.list);
+router.get("/", listBlockValidator, validateRequest, controller.list);
 
 // Get by id
 router.get("/:id", controller.getById);
 
 // Update
-router.put("/:id", controller.update);
+router.put("/:id", updateBlockValidator, validateRequest, controller.update);
 
 // Delete (soft/hard)
-router.delete("/:id", controller.remove);
+router.delete("/:id", deleteBlockValidator, validateRequest, controller.remove);
 
 module.exports = router;
