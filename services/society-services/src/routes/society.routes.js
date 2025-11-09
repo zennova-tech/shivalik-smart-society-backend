@@ -6,7 +6,6 @@ const { required } = require("../middleware/auth"); // verifies JWT
 const societyListCtrl = require("../controllers/society.list.controller");
 const { createSocietyValidator } = require("../validations/society.validators");
 
-const { required } = require("../middleware/auth"); // verifies JWT
 router.get("/list", required, societyListCtrl.getSocietiesList);
 router.post("/", required, societyController.createSociety);
 router.get("/:id/details", required, societyController.getSocietyDetails);
