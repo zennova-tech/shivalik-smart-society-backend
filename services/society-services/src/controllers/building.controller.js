@@ -16,7 +16,7 @@ exports.create = async (req, res, next) => {
       pinCode: req.body.pinCode,
       totalBlocks: req.body.totalBlocks ?? 0,
       totalUnits: req.body.totalUnits ?? 0,
-      buildingType: req.body.buildingType,
+      buildingType: req.body.buildingType.toLowerCase(),
       createdBy: "690f738ef35f6b855a7b7746",
     };
 
